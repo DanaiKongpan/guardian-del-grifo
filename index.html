@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0"
+    />
+    <title>El Guardián del Grifo — Box 2 (AR)</title>
+
+    <!-- A-Frame (3D scene framework) -->
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <!-- AR.js for A-Frame (marker tracking) -->
+    <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.5/aframe/build/aframe-ar.js"></script>
+
+    <style>
+      body { margin: 0; overflow: hidden; }
+      /* Small helper hint shown until a marker is found */
+      #hint {
+        position: fixed;
+        left: 0; right: 0; bottom: 16px;
+        text-align: center;
+        font-family: sans-serif;
+        color: #fff;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+        z-index: 10;
+        pointer-events: none;
+        font-size: 15px;
+      }
+    </style>
+
+    <script>
+      /*
+        OCCLUDER COMPONENT
+        ------------------
+        Any entity given the attribute `occluder` will have every mesh in its
+        subtree turned into a depth-only mask: it writes to the depth buffer
+        (hiding geometry behind it) but does NOT draw any color. This is what
+        makes the box's front frame invisible while still hiding whatever would
+        otherwise "leak" out past the opening.
+
+        We ALSO auto-detect any mesh whose name contains "occluder" inside the
+        loaded GLB and apply the same treatment, so the frame plane you named
+        `Occluder_Box2` in Blender becomes an occluder automatically.
+      */
+      AFRAME.registerComponent('occluder-model', {
+        // Attach this to the <a-entity> that loads the GLB.
+        init: function () {
+          this.el.addEventListener('model-loaded', (e) => {
+            const root = e.detail.model;
+            let count = 0;
+            root.traverse((node) => {
+              if (node.isMesh && node.name && node.name.toLowerCase().includes('occluder')) {
+                // Turn this mesh into a pure depth-mask
+                node.material.colorWrite = false;   // don't draw color
+                node.material.depthWrite = true;    // still write depth (hides things behind)
+                node.renderOrder = -1;              // render before normal meshes
+                count++;
+              }
+            });
+            console.log('[occluder-model] occluder meshes found & masked:', count);
+          });
+        }
+      });
+
+      // Hide the hint text once a marker is detected the first time.
+      window.addEventListener('load', () => {
+        const marker = document.querySelector('a-marker');
+        const hint = document.getElementById('hint');
+        if (marker) {
+          marker.addEventListener('markerFound', () => { hint.style.display = 'none'; });
+          marker.addEventListener('markerLost', () => { hint.style.display = 'block'; });
+        }
+      });
+    </script>
+  </head>
+
+  <body>
+    <div id="hint">Point your camera at the <b>Kanji</b> marker</div>
+
+    <a-scene
+      embedded
+      vr-mode-ui="enabled: false"
+      renderer="colorManagement: true; sortObjects: true; alpha: true"
+      arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; trackingMethod: best;"
+    >
+      <!-- Preload the model so it's ready before the marker is seen -->
+      <a-assets>
+        <a-asset-item id="box2" src="box2.glb"></a-asset-item>
+      </a-assets>
+
+      <!-- KANJI preset marker -->
+      <a-marker preset="kanji" smooth="true" smoothCount="8" smoothTolerance="0.01" smoothThreshold="4">
+        <!--
+          The model wrapper.
+          - position/rotation/scale are the numbers we will TUNE after the
+            first phone test. These are just reasonable starting guesses.
+          - The box was authored in Blender ~4 units wide x 5 tall, so we
+            start it small (scale 0.15) so it fits over a normal printed marker.
+        -->
+        <a-entity
+          id="model-wrapper"
+          gltf-model="#box2"
+          occluder-model
+          position="0 0 0"
+          rotation="0 0 0"
+          scale="0.15 0.15 0.15"
+        ></a-entity>
+      </a-marker>
+
+      <!-- Camera required by AR.js -->
+      <a-entity camera></a-entity>
+    </a-scene>
+  </body>
+</html>
