@@ -54,12 +54,20 @@
               if (node.isMesh) {
                 allMeshNames.push(node.name || '(unnamed)');
                 if (node.name && node.name.toLowerCase().includes('occluder')) {
-                  // Turn this mesh into a pure depth-mask
-                  node.material.colorWrite = false;   // don't draw color
-                  node.material.depthWrite = true;    // still write depth (hides things behind)
-                  node.renderOrder = -1;              // render before normal meshes
+                  // Turn this mesh into a pure depth-mask.
+                  // Use a fresh material so we don't share state with other meshes.
+                  const occMat = new THREE.MeshBasicMaterial();
+                  occMat.colorWrite = false;    // don't draw color
+                  occMat.depthWrite = true;     // write depth (hides things behind)
+                  occMat.depthTest = true;
+                  occMat.side = THREE.DoubleSide; // work regardless of viewing direction
+                  node.material = occMat;
+                  node.renderOrder = -1000;     // draw FIRST so its depth is in place
                   count++;
                   console.log('[occluder-model] MASKED mesh:', node.name);
+                } else {
+                  // Ensure every other mesh renders AFTER the occluder
+                  node.renderOrder = 1;
                 }
               }
             });
