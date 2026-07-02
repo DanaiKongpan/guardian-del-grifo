@@ -49,16 +49,24 @@
           this.el.addEventListener('model-loaded', (e) => {
             const root = e.detail.model;
             let count = 0;
+            const allMeshNames = [];
             root.traverse((node) => {
-              if (node.isMesh && node.name && node.name.toLowerCase().includes('occluder')) {
-                // Turn this mesh into a pure depth-mask
-                node.material.colorWrite = false;   // don't draw color
-                node.material.depthWrite = true;    // still write depth (hides things behind)
-                node.renderOrder = -1;              // render before normal meshes
-                count++;
+              if (node.isMesh) {
+                allMeshNames.push(node.name || '(unnamed)');
+                if (node.name && node.name.toLowerCase().includes('occluder')) {
+                  // Turn this mesh into a pure depth-mask
+                  node.material.colorWrite = false;   // don't draw color
+                  node.material.depthWrite = true;    // still write depth (hides things behind)
+                  node.renderOrder = -1;              // render before normal meshes
+                  count++;
+                  console.log('[occluder-model] MASKED mesh:', node.name);
+                }
               }
             });
-            console.log('[occluder-model] occluder meshes found & masked:', count);
+            console.log('[occluder-model] ==== SUMMARY ====');
+            console.log('[occluder-model] Total meshes in GLB:', allMeshNames.length);
+            console.log('[occluder-model] Occluder meshes masked:', count);
+            console.log('[occluder-model] ALL mesh names:', allMeshNames);
           });
         }
       });
