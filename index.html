@@ -98,12 +98,18 @@
           - The box was authored in Blender ~4 units wide x 5 tall, so we
             start it small (scale 0.15) so it fits over a normal printed marker.
         -->
+        <!--
+          ROTATION:
+          -90 X tilts the box "onto its back" so the front opening faces UP
+          through the marker (diorama view from above).
+          180 Y flips it so the character faces AWAY from the viewer.
+        -->
         <a-entity
           id="model-wrapper"
           gltf-model="#box2"
           occluder-model
           position="0 0 0"
-          rotation="0 0 0"
+          rotation="-90 180 0"
           scale="0.15 0.15 0.15"
         ></a-entity>
       </a-marker>
