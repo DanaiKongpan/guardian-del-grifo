@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0"
+    />
+    <title>El Guardián del Grifo — Box 2 (AR) — SLIDER</title>
+
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.5/aframe/build/aframe-ar.js"></script>
+
+    <style>
+      body { margin: 0; overflow: hidden; }
+      #hint {
+        position: fixed;
+        left: 0; right: 0; bottom: 16px;
+        text-align: center;
+        font-family: sans-serif;
+        color: #fff;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+        z-index: 10;
+        pointer-events: none;
+        font-size: 15px;
+      }
+      /* Slider control panel — floats over the AR view */
+      #panel {
+        position: fixed;
+        top: 0; left: 0; right: 0;
+        z-index: 20;
+        background: rgba(0,0,0,0.55);
+        color: #fff;
+        font-family: sans-serif;
+        padding: 10px 14px 12px;
+        box-sizing: border-box;
+      }
+      #panel .row { display: flex; align-items: center; gap: 10px; }
+      #panel label { font-size: 13px; white-space: nowrap; }
+      #panel input[type=range] { flex: 1; height: 30px; }
+      #yval {
+        font-variant-numeric: tabular-nums;
+        font-size: 15px;
+        font-weight: bold;
+        min-width: 56px;
+        text-align: right;
+      }
+      #panel .hintline { font-size: 11px; opacity: 0.8; margin-top: 4px; }
+    </style>
+
+    <script>
+      AFRAME.registerComponent('occluder-model', {
+        init: function () {
+          this.el.addEventListener('model-loaded', (e) => {
+            const root = e.detail.model;
+            let count = 0;
+            const allMeshNames = [];
+            root.traverse((node) => {
+              if (node.isMesh) {
+                allMeshNames.push(node.name || '(unnamed)');
+                if (node.name && node.name.toLowerCase().includes('occluder')) {
+                  const occMat = new THREE.MeshBasicMaterial();
+                  occMat.colorWrite = false;
+                  occMat.depthWrite = true;
+                  occMat.depthTest = true;
+                  occMat.side = THREE.DoubleSide;
+                  node.material = occMat;
+                  node.renderOrder = -1000;
+                  count++;
+                  console.log('[occluder-model] MASKED mesh:', node.name);
+                } else {
+                  node.renderOrder = 1;
+                }
+              }
+            });
+            console.log('[occluder-model] ==== SUMMARY ====');
+            console.log('[occluder-model] Total meshes in GLB:', allMeshNames.length);
+            console.log('[occluder-model] Occluder meshes masked:', count);
+          });
+        }
+      });
+
+      window.addEventListener('load', () => {
+        const marker = document.querySelector('a-marker');
+        const hint = document.getElementById('hint');
+        if (marker) {
+          marker.addEventListener('markerFound', () => { hint.style.display = 'none'; });
+          marker.addEventListener('markerLost', () => { hint.style.display = 'block'; });
+        }
+
+        const wrapper = document.getElementById('model-wrapper');
+        const slider = document.getElementById('yslider');
+        const readout = document.getElementById('yval');
+
+        function applyY(v) {
+          // Keep X and Z fixed at 0; only Y changes.
+          wrapper.setAttribute('position', {x: 0, y: parseFloat(v), z: 0});
+          readout.textContent = parseFloat(v).toFixed(2);
+        }
+
+        slider.addEventListener('input', (e) => applyY(e.target.value));
+        // Initialize display to match starting value
+        applyY(slider.value);
+      });
+    </script>
+  </head>
+
+  <body>
+    <div id="panel">
+      <div class="row">
+        <label>Vertical (Y)</label>
+        <input id="yslider" type="range" min="-3" max="3" step="0.05" value="-0.75" />
+        <span id="yval">-0.75</span>
+      </div>
+      <div class="hintline">Drag to move the box up/down. Note the number when aligned, then tell me.</div>
+    </div>
+
+    <div id="hint">Point your camera at the <b>Kanji</b> marker</div>
+
+    <a-scene
+      embedded
+      vr-mode-ui="enabled: false"
+      renderer="colorManagement: true; sortObjects: true; alpha: true"
+      arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; trackingMethod: best;"
+    >
+      <a-assets>
+        <a-asset-item id="box2" src="box2.glb"></a-asset-item>
+      </a-assets>
+
+      <a-marker preset="kanji" smooth="true" smoothCount="8" smoothTolerance="0.01" smoothThreshold="4">
+        <a-entity
+          id="model-wrapper"
+          gltf-model="#box2"
+          occluder-model
+          position="0 -0.75 0"
+          rotation="90 180 0"
+          scale="0.30 0.30 0.30"
+        ></a-entity>
+      </a-marker>
+
+      <a-entity camera></a-entity>
+    </a-scene>
+  </body>
+</html>
