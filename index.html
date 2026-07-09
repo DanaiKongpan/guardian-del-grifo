@@ -114,13 +114,13 @@
   </head>
 
   <body>
-    <div id="hint">Point your camera at a marker (<b>Hiro</b>, <b>Kanji</b>, or <b>A</b>)</div>
+    <div id="hint">Point your camera at a marker (<b>Hiro</b>, <b>Kanji</b>, or <b>Barcode #5</b>)</div>
 
     <a-scene
       embedded
       vr-mode-ui="enabled: false"
       renderer="colorManagement: true; sortObjects: true; alpha: true"
-      arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; trackingMethod: best;"
+      arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3; trackingMethod: best;"
     >
       <!-- Preload all three models so they're ready when their marker is seen -->
       <a-assets>
@@ -161,12 +161,11 @@
 
       <!--
         BOX 3 — Rich/poor contrast (modern house + pool + gardener vs poor apartment + mom)
-        Marker: Custom "A" pattern (pattern-tracker_a.patt)
+        Marker: Barcode #5 (built-in AR.js barcode marker, no .patt file needed)
         Occluder plane in Blender at Y=1.5 (NOT 2.25 like the others).
-        Because the occluder Y is smaller, the position offset needs to be
-        proportionally smaller too: 1.5/2.25 × 0.75 ≈ 0.5. Starting at -0.5.
+        Position offset scaled proportionally: 1.5/2.25 × 0.75 ≈ 0.5. Starting at -0.5.
       -->
-      <a-marker type="pattern" url="pattern-tracker_a.patt" smooth="true" smoothCount="8" smoothTolerance="0.01" smoothThreshold="4">
+      <a-marker type="barcode" value="5" smooth="true" smoothCount="8" smoothTolerance="0.01" smoothThreshold="4">
         <a-entity
           gltf-model="#box3"
           occluder-model
