@@ -76,16 +76,39 @@
         const markers = document.querySelectorAll('a-marker');
         const hint = document.getElementById('hint');
         let foundCount = 0;
-        markers.forEach((m) => {
+
+        console.log('[markers] Found', markers.length, 'markers on page');
+        markers.forEach((m, i) => {
+          const preset = m.getAttribute('preset') || 'none';
+          const type = m.getAttribute('type') || 'none';
+          const url = m.getAttribute('url') || 'none';
+          console.log(`[markers] Marker ${i}: preset=${preset} type=${type} url=${url}`);
+
           m.addEventListener('markerFound', () => {
             foundCount++;
             hint.style.display = 'none';
+            console.log(`[markers] FOUND marker ${i} (preset=${preset}, type=${type})`);
           });
           m.addEventListener('markerLost', () => {
             foundCount = Math.max(0, foundCount - 1);
             if (foundCount === 0) hint.style.display = 'block';
+            console.log(`[markers] LOST marker ${i}`);
           });
         });
+
+        // Test whether the .patt file is actually reachable from the browser
+        fetch('pattern-tracker_a.patt')
+          .then(r => {
+            console.log('[pattern-file] fetch status:', r.status, r.statusText);
+            if (r.ok) return r.text();
+            throw new Error('Pattern file returned ' + r.status);
+          })
+          .then(txt => {
+            console.log('[pattern-file] loaded successfully, first 100 chars:', txt.substring(0, 100));
+          })
+          .catch(err => {
+            console.error('[pattern-file] ERROR loading pattern file:', err.message);
+          });
       });
     </script>
   </head>
