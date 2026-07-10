@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0"
     />
-    <title>El Guardián del Grifo — Box 2 (AR) — SLIDER XYZ</title>
+    <title>El Guardián del Grifo — AR — SLIDER (3 boxes)</title>
 
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.5/aframe/build/aframe-ar.js"></script>
@@ -28,12 +28,17 @@
         position: fixed;
         top: 0; left: 0; right: 0;
         z-index: 20;
-        background: rgba(0,0,0,0.6);
+        background: rgba(0,0,0,0.62);
         color: #fff;
         font-family: sans-serif;
         padding: 8px 12px 10px;
         box-sizing: border-box;
       }
+      #panel .active {
+        font-size: 13px;
+        margin-bottom: 5px;
+      }
+      #panel .active b { color: #7fd7ff; }
       #panel .row { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
       #panel label { font-size: 13px; width: 74px; white-space: nowrap; }
       #panel input[type=range] { flex: 1; height: 28px; }
@@ -45,15 +50,16 @@
         text-align: right;
       }
       #panel .hintline { font-size: 11px; opacity: 0.8; margin-top: 5px; }
-      #summary {
+      .summary {
         font-family: monospace;
         font-size: 12px;
-        margin-top: 6px;
-        padding: 5px 7px;
-        background: rgba(255,255,255,0.12);
+        margin-top: 4px;
+        padding: 4px 7px;
+        background: rgba(255,255,255,0.10);
         border-radius: 4px;
         word-break: break-all;
       }
+      .summary.on { background: rgba(127,215,255,0.25); }
     </style>
 
     <script>
@@ -68,8 +74,8 @@
                   const occMat = new THREE.MeshBasicMaterial();
                   occMat.colorWrite = false;
                   occMat.depthWrite = true;
-                  occMat.depthTest = true;
-                  occMat.side = THREE.DoubleSide;
+                  occMat.depthTest  = true;
+                  occMat.side       = THREE.DoubleSide;
                   node.material = occMat;
                   node.renderOrder = -1000;
                   count++;
@@ -84,44 +90,99 @@
       });
 
       window.addEventListener('load', () => {
-        const marker = document.querySelector('a-marker');
         const hint = document.getElementById('hint');
-        if (marker) {
-          marker.addEventListener('markerFound', () => { hint.style.display = 'none'; });
-          marker.addEventListener('markerLost', () => { hint.style.display = 'block'; });
-        }
 
-        const wrapper = document.getElementById('model-wrapper');
+        // Each box's wrapper + its current position, seeded with the file's values.
+        const boxes = {
+          box1: { el: document.getElementById('wrap-box1'), label: 'BOX 1 (Hiro)',     pos: {x:0, y:-0.75, z:0} },
+          box2: { el: document.getElementById('wrap-box2'), label: 'BOX 2 (Kanji)',    pos: {x:0, y:-0.75, z:0} },
+          box3: { el: document.getElementById('wrap-box3'), label: 'BOX 3 (Barcode5)', pos: {x:0, y:-0.5,  z:0} }
+        };
+
+        // Which box the sliders currently drive. Defaults to box2.
+        let active = 'box2';
+
         const sx = document.getElementById('xslider');
         const sy = document.getElementById('yslider');
         const sz = document.getElementById('zslider');
         const vx = document.getElementById('xval');
         const vy = document.getElementById('yval');
         const vz = document.getElementById('zval');
-        const summary = document.getElementById('summary');
+        const activeLabel = document.getElementById('active-label');
+        const sum1 = document.getElementById('sum-box1');
+        const sum2 = document.getElementById('sum-box2');
+        const sum3 = document.getElementById('sum-box3');
+        const sums = { box1: sum1, box2: sum2, box3: sum3 };
 
-        function apply() {
+        function fmtLine(key) {
+          const p = boxes[key].pos;
+          return boxes[key].label + '  position="' +
+            p.x.toFixed(2) + ' ' + p.y.toFixed(2) + ' ' + p.z.toFixed(2) + '"';
+        }
+
+        function refreshSummaries() {
+          for (const key in boxes) {
+            sums[key].textContent = fmtLine(key);
+            sums[key].classList.toggle('on', key === active);
+          }
+        }
+
+        // Push the active box's stored pos into the sliders + readouts.
+        function loadActiveIntoSliders() {
+          const p = boxes[active].pos;
+          sx.value = p.x; sy.value = p.y; sz.value = p.z;
+          vx.textContent = p.x.toFixed(2);
+          vy.textContent = p.y.toFixed(2);
+          vz.textContent = p.z.toFixed(2);
+          activeLabel.textContent = boxes[active].label;
+        }
+
+        // Apply slider values to the active box's wrapper + store them.
+        function applySliders() {
           const x = parseFloat(sx.value);
           const y = parseFloat(sy.value);
           const z = parseFloat(sz.value);
-          wrapper.setAttribute('position', {x: x, y: y, z: z});
+          boxes[active].pos = {x, y, z};
+          boxes[active].el.setAttribute('position', {x, y, z});
           vx.textContent = x.toFixed(2);
           vy.textContent = y.toFixed(2);
           vz.textContent = z.toFixed(2);
-          summary.textContent =
-            'position="' + x.toFixed(2) + ' ' + y.toFixed(2) + ' ' + z.toFixed(2) + '"';
+          refreshSummaries();
         }
 
-        sx.addEventListener('input', apply);
-        sy.addEventListener('input', apply);
-        sz.addEventListener('input', apply);
-        apply();
+        sx.addEventListener('input', applySliders);
+        sy.addEventListener('input', applySliders);
+        sz.addEventListener('input', applySliders);
+
+        // When a marker is found, switch the sliders to control that box.
+        function bindMarker(markerId, boxKey) {
+          const marker = document.getElementById(markerId);
+          if (!marker) return;
+          marker.addEventListener('markerFound', () => {
+            hint.style.display = 'none';
+            active = boxKey;
+            loadActiveIntoSliders();
+            refreshSummaries();
+            console.log('[slider] now controlling', boxKey);
+          });
+          marker.addEventListener('markerLost', () => {
+            hint.style.display = 'block';
+          });
+        }
+        bindMarker('marker-box1', 'box1');
+        bindMarker('marker-box2', 'box2');
+        bindMarker('marker-box3', 'box3');
+
+        // Initialize display.
+        loadActiveIntoSliders();
+        refreshSummaries();
       });
     </script>
   </head>
 
   <body>
     <div id="panel">
+      <div class="active">Adjusting: <b id="active-label">BOX 2 (Kanji)</b> — point at a marker to switch</div>
       <div class="row">
         <label>X (horiz)</label>
         <input id="xslider" type="range" min="-3" max="3" step="0.05" value="0" />
@@ -129,37 +190,66 @@
       </div>
       <div class="row">
         <label>Y (vert)</label>
-        <input id="yslider" type="range" min="-3" max="3" step="0.05" value="-0.95" />
-        <span class="val" id="yval">-0.95</span>
+        <input id="yslider" type="range" min="-3" max="3" step="0.05" value="-0.75" />
+        <span class="val" id="yval">-0.75</span>
       </div>
       <div class="row">
         <label>Z (depth)</label>
         <input id="zslider" type="range" min="-3" max="3" step="0.05" value="0" />
         <span class="val" id="zval">0.00</span>
       </div>
-      <div id="summary">position="0.00 -0.95 0.00"</div>
-      <div class="hintline">Drag each slider. When aligned, copy the line above (or tell me the 3 numbers).</div>
+      <div class="summary" id="sum-box1">BOX 1</div>
+      <div class="summary" id="sum-box2">BOX 2</div>
+      <div class="summary" id="sum-box3">BOX 3</div>
+      <div class="hintline">Point at a marker to select its box, tune, then point at the next. Send me all 3 lines when done.</div>
     </div>
 
-    <div id="hint">Point your camera at the <b>Kanji</b> marker</div>
+    <div id="hint">Point your camera at a marker (<b>Hiro</b>, <b>Kanji</b>, or <b>Barcode #5</b>)</div>
 
     <a-scene
       embedded
       vr-mode-ui="enabled: false"
       renderer="colorManagement: true; sortObjects: true; alpha: true"
-      arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; trackingMethod: best;"
+      arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3; trackingMethod: best;"
     >
       <a-assets>
+        <a-asset-item id="box1" src="box1.glb"></a-asset-item>
         <a-asset-item id="box2" src="box2.glb"></a-asset-item>
+        <a-asset-item id="box3" src="box3.glb"></a-asset-item>
       </a-assets>
 
-      <a-marker preset="kanji" smooth="true" smoothCount="8" smoothTolerance="0.01" smoothThreshold="4">
+      <!-- BOX 1 — Hiro -->
+      <a-marker id="marker-box1" preset="hiro" smooth="true" smoothCount="8" smoothTolerance="0.01" smoothThreshold="4">
         <a-entity
-          id="model-wrapper"
+          id="wrap-box1"
+          gltf-model="#box1"
+          occluder-model
+          position="0 -0.75 0"
+          rotation="-90 0 0"
+          scale="0.30 0.30 0.30"
+        ></a-entity>
+      </a-marker>
+
+      <!-- BOX 2 — Kanji -->
+      <a-marker id="marker-box2" preset="kanji" smooth="true" smoothCount="8" smoothTolerance="0.01" smoothThreshold="4">
+        <a-entity
+          id="wrap-box2"
           gltf-model="#box2"
           occluder-model
-          position="0 -0.95 0"
+          position="0 -0.75 0"
           rotation="90 180 0"
+          scale="0.30 0.30 0.30"
+        ></a-entity>
+      </a-marker>
+
+      <!-- BOX 3 — Barcode #5 -->
+      <a-marker id="marker-box3" type="barcode" value="5" smooth="true" smoothCount="8" smoothTolerance="0.01" smoothThreshold="4">
+        <a-entity
+          id="wrap-box3"
+          gltf-model="#box3"
+          occluder-model
+          position="0 -0.5 0"
+          rotation="-90 180 0"
           scale="0.30 0.30 0.30"
         ></a-entity>
       </a-marker>
